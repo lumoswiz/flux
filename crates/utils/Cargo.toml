@@ -1,0 +1,6 @@
+[package]
+name = "flux-utils"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

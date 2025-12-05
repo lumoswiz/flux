@@ -1,0 +1,6 @@
+[package]
+name = "flux-reporting"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
