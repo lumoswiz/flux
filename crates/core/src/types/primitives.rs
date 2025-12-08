@@ -1,21 +1,21 @@
-use alloy::primitives::U256;
+use alloy::primitives::{Address, U256};
 
+#[derive(Clone, Copy)]
 pub struct TickSpacing(U256);
 
 impl TickSpacing {
-    pub const ZERO: Self = Self(U256::ZERO);
     pub const MIN: u32 = 2;
 
     pub fn new(value: U256) -> Self {
         Self(value)
     }
 
-    pub fn as_u256(&self) -> U256 {
-        self.0
-    }
-
     pub fn min() -> Self {
         Self(U256::from(Self::MIN))
+    }
+
+    pub fn as_u256(&self) -> U256 {
+        self.0
     }
 }
 
@@ -145,5 +145,53 @@ impl Mps {
 
     pub fn is_sold_out(&self) -> bool {
         self.0 >= Self::FULL.0
+    }
+}
+
+pub struct CurrencyAddr(Address);
+
+impl CurrencyAddr {
+    pub fn new(value: Address) -> Self {
+        Self(value)
+    }
+
+    pub fn as_address(&self) -> Address {
+        self.0
+    }
+
+    pub fn is_native(&self) -> bool {
+        self.0 == Address::ZERO
+    }
+}
+
+pub struct TokenAddr(Address);
+
+impl TokenAddr {
+    pub fn new(value: Address) -> Option<Self> {
+        if value == Address::ZERO {
+            None
+        } else {
+            Some(Self(value))
+        }
+    }
+
+    pub fn as_address(&self) -> Address {
+        self.0
+    }
+}
+
+pub struct HookAddr(Address);
+
+impl HookAddr {
+    pub fn new(value: Address) -> Self {
+        Self(value)
+    }
+
+    pub fn as_address(&self) -> Address {
+        self.0
+    }
+
+    pub fn is_configured(&self) -> bool {
+        self.0 != Address::ZERO
     }
 }
