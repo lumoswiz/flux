@@ -67,22 +67,13 @@ impl AuctionState {
     }
 
     pub fn can_submit_bid(&self) -> bool {
-        let active = match self.phase {
-            AuctionPhase::Active { .. } => true,
-            _ => false,
-        };
+        let active = matches!(self.phase, AuctionPhase::Active { .. });
         active && !self.checkpoint.is_sold_out()
     }
 
     pub fn can_early_exit(&self) -> bool {
-        let graduated = match self.graduation {
-            GraduationStatus::Graduated => true,
-            GraduationStatus::NotGraduated => false,
-        };
-        let active = match self.phase {
-            AuctionPhase::Active { .. } => true,
-            _ => false,
-        };
+        let graduated = matches!(self.graduation, GraduationStatus::Graduated);
+        let active = matches!(self.phase, AuctionPhase::Active { .. });
         graduated && active
     }
 }
