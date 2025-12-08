@@ -1,0 +1,6 @@
+title = "Example bids config"
+
+[bid]
+max_bid = 10.5
+amount = 3.0
+owner = "0xabc1230000000000000000000000000000000000"
