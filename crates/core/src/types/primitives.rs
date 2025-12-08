@@ -111,10 +111,11 @@ impl BidId {
     }
 }
 
+#[derive(PartialEq)]
 pub struct BlockNumber(u64);
 
 impl BlockNumber {
-    pub const MAX: Self = Self(u64::MAX);
+    pub const TAIL_SENTINEL: Self = Self(u64::MAX);
 
     pub fn new(value: u64) -> Self {
         Self(value)
