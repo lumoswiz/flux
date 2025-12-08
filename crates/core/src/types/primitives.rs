@@ -111,7 +111,7 @@ impl BidId {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct BlockNumber(u64);
 
 impl BlockNumber {
