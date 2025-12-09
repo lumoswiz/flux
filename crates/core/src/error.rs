@@ -1,4 +1,9 @@
-use alloy::{contract, providers::MulticallError, transports::TransportError};
+use alloy::{
+    contract,
+    primitives::B256,
+    providers::{MulticallError, PendingTransactionError},
+    transports::TransportError,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -7,10 +12,16 @@ pub enum Error {
     Config(#[from] ConfigError),
 
     #[error(transparent)]
+    Validation(#[from] ValidationError),
+
+    #[error(transparent)]
     Hook(#[from] HookError),
 
     #[error(transparent)]
     State(#[from] StateError),
+
+    #[error(transparent)]
+    Transaction(#[from] TransactionError),
 }
 
 #[derive(Debug, Error)]
@@ -23,6 +34,45 @@ pub enum ConfigError {
 
     #[error("multicall failed: {0}")]
     Multicall(#[from] MulticallError),
+}
+
+#[derive(Debug, Error)]
+pub enum ValidationError {
+    #[error("auction not active")]
+    AuctionNotActive,
+
+    #[error("tokens not deposited")]
+    TokensNotReceived,
+
+    #[error("auction not started")]
+    AuctionNotStarted,
+
+    #[error("auction already over")]
+    AuctionIsOver,
+
+    #[error("auction not over yet")]
+    AuctionNotOver,
+
+    #[error("bid amount must be greater than zero")]
+    AmountTooSmall,
+
+    #[error("bid owner cannot be zero address")]
+    OwnerIsZeroAddress,
+
+    #[error("bid price is invalid for this auction")]
+    InvalidPrice,
+
+    #[error("bid price must be above current clearing price")]
+    BidBelowClearingPrice,
+
+    #[error("auction is sold out")]
+    AuctionSoldOut,
+
+    #[error("bid already exited")]
+    BidAlreadyExited,
+
+    #[error("cannot partially exit bid before graduation")]
+    CannotPartiallyExitBeforeGraduation,
 }
 
 #[derive(Debug, Error)]
@@ -47,4 +97,31 @@ pub enum StateError {
 
     #[error("multicall failed: {0}")]
     Multicall(#[from] MulticallError),
+
+    #[error("bid not found")]
+    BidNotFound,
+}
+
+#[derive(Debug, Error)]
+pub enum TransactionError {
+    #[error("transaction failed: {0}")]
+    Contract(#[from] contract::Error),
+
+    #[error("pending transaction error: {0}")]
+    Pending(#[from] PendingTransactionError),
+
+    #[error("transaction receipt missing body")]
+    MissingReceipt,
+
+    #[error("BidSubmitted event not found in receipt logs")]
+    MissingBidSubmittedEvent,
+
+    #[error("BidExited event not found in receipt logs")]
+    MissingBidExitedEvent,
+
+    #[error("TokensClaimed event not found in receipt logs")]
+    MissingTokensClaimedEvent,
+
+    #[error("transaction reverted: {tx_hash:?}")]
+    Reverted { tx_hash: B256 },
 }

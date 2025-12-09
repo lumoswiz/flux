@@ -19,7 +19,7 @@ impl TickSpacing {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct Price(U256);
 
 impl Price {
@@ -63,11 +63,16 @@ impl Price {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct CurrencyAmount(U256);
 
 impl CurrencyAmount {
     pub fn new(value: U256) -> Self {
         Self(value)
+    }
+
+    pub fn as_u128(&self) -> u128 {
+        self.0.to::<u128>()
     }
 
     pub fn as_u256(&self) -> U256 {
@@ -79,6 +84,7 @@ impl CurrencyAmount {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct TokenAmount(U256);
 
 impl TokenAmount {
@@ -110,7 +116,7 @@ impl BidId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct BlockNumber(u64);
 
 impl BlockNumber {

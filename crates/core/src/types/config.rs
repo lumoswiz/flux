@@ -20,8 +20,8 @@ pub struct AuctionConfig {
 
 impl AuctionConfig {
     pub fn is_valid_price(&self, price: Price) -> bool {
-        price.as_u256() > self.floor_price.as_u256()
-            && price.as_u256() <= self.max_bid_price.as_u256()
+        price > self.floor_price
+            && price <= self.max_bid_price
             && price.is_aligned(self.tick_spacing)
     }
 

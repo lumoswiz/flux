@@ -1,4 +1,4 @@
-use alloy::primitives::Address;
+use alloy::primitives::{Address, B256};
 
 use super::primitives::{BidId, BlockNumber, CurrencyAmount, Mps, Price, TokenAmount};
 
@@ -27,9 +27,9 @@ pub struct Bid {
 
 impl Bid {
     pub fn status(&self, clearing_price: Price) -> BidStatus {
-        if self.max_price.as_u256() > clearing_price.as_u256() {
+        if self.max_price > clearing_price {
             BidStatus::ITM
-        } else if self.max_price.as_u256() == clearing_price.as_u256() {
+        } else if self.max_price == clearing_price {
             BidStatus::ATM
         } else {
             BidStatus::OTM
@@ -51,4 +51,9 @@ impl Bid {
     pub fn needs_claim(&self) -> bool {
         self.exited_block.is_some() && !self.tokens_filled.is_zero()
     }
+}
+
+pub struct TrackedBid {
+    pub id: BidId,
+    pub tx_hash: B256,
 }
