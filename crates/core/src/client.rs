@@ -1,14 +1,17 @@
+use std::sync::Arc;
+
 use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
 use flux_abi::{IContinuousClearingAuction, IERC20Minimal};
 
 use crate::{
     error::{ConfigError, Error, StateError},
+    hooks::ValidationHook,
     types::{
         checkpoint::Checkpoint,
         config::AuctionConfig,
         primitives::{
-            BlockNumber, CurrencyAddr, CurrencyAmount, HookAddr, Mps, Price, TickSpacing,
+            BidId, BlockNumber, CurrencyAddr, CurrencyAmount, HookAddr, Mps, Price, TickSpacing,
             TokenAddr, TokenAmount,
         },
         state::{AuctionState, GraduationStatus, TokenDepositStatus},
@@ -17,22 +20,34 @@ use crate::{
 
 pub struct AuctionClient<P>
 where
-    P: Provider,
+    P: Provider + Clone,
 {
     provider: P,
     auction: Address,
+    owner: Address,
+    hook: Arc<dyn ValidationHook>,
+    tracked_bids: Vec<BidId>,
     config: AuctionConfig,
 }
 
 impl<P> AuctionClient<P>
 where
-    P: Provider,
+    P: Provider + Clone,
 {
-    pub async fn new(provider: P, auction: Address) -> Result<Self, Error> {
+    pub async fn new(
+        provider: P,
+        auction: Address,
+        owner: Address,
+        hook: impl Into<Arc<dyn ValidationHook>>,
+        tracked_bids: Vec<BidId>,
+    ) -> Result<Self, Error> {
         let config = Self::fetch_config(&provider, auction).await?;
         Ok(Self {
             provider,
             auction,
+            owner,
+            hook: hook.into(),
+            tracked_bids,
             config,
         })
     }
