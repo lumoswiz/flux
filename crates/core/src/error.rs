@@ -1,4 +1,9 @@
-use alloy::{contract, providers::MulticallError, transports::TransportError};
+use alloy::{
+    contract,
+    primitives::B256,
+    providers::{MulticallError, PendingTransactionError},
+    transports::TransportError,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -14,6 +19,9 @@ pub enum Error {
 
     #[error(transparent)]
     State(#[from] StateError),
+
+    #[error(transparent)]
+    Transaction(#[from] TransactionError),
 }
 
 #[derive(Debug, Error)]
@@ -80,4 +88,22 @@ pub enum StateError {
 
     #[error("multicall failed: {0}")]
     Multicall(#[from] MulticallError),
+}
+
+#[derive(Debug, Error)]
+pub enum TransactionError {
+    #[error("transaction failed: {0}")]
+    Contract(#[from] contract::Error),
+
+    #[error("pending transaction error: {0}")]
+    Pending(#[from] PendingTransactionError),
+
+    #[error("transaction receipt missing body")]
+    MissingReceipt,
+
+    #[error("BidSubmitted event not found in receipt logs")]
+    MissingBidSubmittedEvent,
+
+    #[error("transaction reverted: {tx_hash:?}")]
+    Reverted { tx_hash: B256 },
 }

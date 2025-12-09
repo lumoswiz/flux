@@ -1,14 +1,17 @@
 use std::sync::Arc;
 
-use alloy::primitives::{Address, Bytes, U256};
 use alloy::providers::Provider;
+use alloy::{
+    consensus::TxReceipt,
+    primitives::{Address, Bytes, U256},
+};
 use flux_abi::{IContinuousClearingAuction, IERC20Minimal};
 
 use crate::{
-    error::{ConfigError, Error, StateError, ValidationError},
+    error::{ConfigError, Error, StateError, TransactionError, ValidationError},
     hooks::ValidationHook,
     types::{
-        action::{SubmitBidInput, SubmitBidParams},
+        action::{SubmitBidInput, SubmitBidParams, SubmitBidResult},
         bid::Bid,
         checkpoint::Checkpoint,
         config::AuctionConfig,
@@ -298,6 +301,56 @@ where
         self.hook.validate(&params, &state).await?;
 
         Ok(params)
+    }
+
+    pub async fn submit_bid(&mut self, params: SubmitBidParams) -> Result<SubmitBidResult, Error> {
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+
+        let call = cca
+            .submitBid_1(
+                params.max_price.as_u256(),
+                params.amount.as_u128(),
+                params.owner,
+                params.prev_tick_price.as_u256(),
+                params.hook_data,
+            )
+            .value(params.value.as_u256());
+
+        let pending = call.send().await.map_err(TransactionError::from)?;
+        let receipt = pending
+            .with_required_confirmations(1)
+            .get_receipt()
+            .await
+            .map_err(TransactionError::from)?;
+
+        let receipt_body = receipt
+            .inner
+            .as_receipt()
+            .ok_or(TransactionError::MissingReceipt)?;
+
+        if !receipt_body.status() {
+            return Err(TransactionError::Reverted {
+                tx_hash: receipt.transaction_hash,
+            }
+            .into());
+        }
+
+        let bid_id = receipt_body
+            .logs()
+            .iter()
+            .find_map(|log| {
+                log.log_decode::<IContinuousClearingAuction::BidSubmitted>()
+                    .ok()
+            })
+            .map(|decoded| BidId::new(decoded.inner.data.id))
+            .ok_or(TransactionError::MissingBidSubmittedEvent)?;
+
+        self.tracked_bids.push(bid_id);
+
+        Ok(SubmitBidResult {
+            bid_id,
+            tx_hash: receipt.transaction_hash,
+        })
     }
 
     pub async fn compute_prev_tick_price(&self, max_price: Price) -> Result<Price, Error> {

@@ -71,6 +71,10 @@ impl CurrencyAmount {
         Self(value)
     }
 
+    pub fn as_u128(&self) -> u128 {
+        self.0.to::<u128>()
+    }
+
     pub fn as_u256(&self) -> U256 {
         self.0
     }
