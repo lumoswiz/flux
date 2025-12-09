@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+flux-abi = { path = "../abi" }
+
 alloy.workspace = true
 thiserror.workspace = true
 async-trait = "0.1.89"

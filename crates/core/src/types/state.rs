@@ -4,11 +4,13 @@ use super::{
     primitives::{BlockNumber, CurrencyAmount},
 };
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GraduationStatus {
     NotGraduated,
     Graduated,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenDepositStatus {
     Unknown,
     NotReceived,
