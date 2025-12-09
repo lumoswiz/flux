@@ -11,7 +11,9 @@ use crate::{
     error::{ConfigError, Error, StateError, TransactionError, ValidationError},
     hooks::ValidationHook,
     types::{
-        action::{ExitBidParams, ExitResult, SubmitBidInput, SubmitBidParams, SubmitBidResult},
+        action::{
+            ExitBidParams, ExitHints, ExitResult, SubmitBidInput, SubmitBidParams, SubmitBidResult,
+        },
         bid::{Bid, TrackedBid},
         checkpoint::Checkpoint,
         config::AuctionConfig,
@@ -440,5 +442,60 @@ where
 
             prev = next_price;
         }
+    }
+
+    pub async fn compute_exit_hints(&self, bid: &Bid) -> Result<ExitHints, Error> {
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+        let tail = cca
+            .MAX_BLOCK_NUMBER()
+            .call()
+            .await
+            .map_err(StateError::from)?;
+
+        let mut last_fully_filled = bid.start_block;
+        let mut current_cp = cca
+            .checkpoints(bid.start_block.as_u64())
+            .call()
+            .await
+            .map_err(StateError::from)?;
+
+        while current_cp.next != tail {
+            let next_block = BlockNumber::new(current_cp.next);
+            let next_cp = cca
+                .checkpoints(next_block.as_u64())
+                .call()
+                .await
+                .map_err(StateError::from)?;
+
+            if next_cp.clearingPrice >= bid.max_price.as_u256() {
+                break;
+            }
+
+            last_fully_filled = next_block;
+            current_cp = next_cp;
+        }
+
+        let mut outbid_block = None;
+
+        while current_cp.next != tail {
+            let next_block = BlockNumber::new(current_cp.next);
+            let next_cp = cca
+                .checkpoints(next_block.as_u64())
+                .call()
+                .await
+                .map_err(StateError::from)?;
+
+            if next_cp.clearingPrice > bid.max_price.as_u256() {
+                outbid_block = Some(next_block);
+                break;
+            }
+
+            current_cp = next_cp;
+        }
+
+        Ok(ExitHints {
+            last_fully_filled_checkpoint_block: last_fully_filled,
+            outbid_block,
+        })
     }
 }
