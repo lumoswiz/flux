@@ -50,6 +50,9 @@ pub enum ValidationError {
     #[error("auction already over")]
     AuctionIsOver,
 
+    #[error("auction not over yet")]
+    AuctionNotOver,
+
     #[error("bid amount must be greater than zero")]
     AmountTooSmall,
 
@@ -64,6 +67,12 @@ pub enum ValidationError {
 
     #[error("auction is sold out")]
     AuctionSoldOut,
+
+    #[error("bid already exited")]
+    BidAlreadyExited,
+
+    #[error("cannot partially exit bid before graduation")]
+    CannotPartiallyExitBeforeGraduation,
 }
 
 #[derive(Debug, Error)]
@@ -88,6 +97,9 @@ pub enum StateError {
 
     #[error("multicall failed: {0}")]
     Multicall(#[from] MulticallError),
+
+    #[error("bid not found")]
+    BidNotFound,
 }
 
 #[derive(Debug, Error)]

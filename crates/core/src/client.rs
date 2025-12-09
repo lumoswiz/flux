@@ -12,7 +12,8 @@ use crate::{
     hooks::ValidationHook,
     types::{
         action::{
-            ExitBidParams, ExitHints, ExitResult, SubmitBidInput, SubmitBidParams, SubmitBidResult,
+            ExitBidParams, ExitHints, ExitPartiallyFilledParams, ExitResult, SubmitBidInput,
+            SubmitBidParams, SubmitBidResult,
         },
         bid::{Bid, TrackedBid},
         checkpoint::Checkpoint,
@@ -320,7 +321,7 @@ where
 
         let pending = call.send().await.map_err(TransactionError::from)?;
         let receipt = pending
-            .with_required_confirmations(1)
+            .with_required_confirmations(3)
             .get_receipt()
             .await
             .map_err(TransactionError::from)?;
@@ -368,7 +369,7 @@ where
             .map_err(TransactionError::from)?;
 
         let receipt = pending
-            .with_required_confirmations(1)
+            .with_required_confirmations(3)
             .get_receipt()
             .await
             .map_err(TransactionError::from)?;
@@ -403,6 +404,80 @@ where
             tokens_filled,
             currency_refunded,
             tx_hash: receipt.transaction_hash,
+        })
+    }
+
+    pub async fn exit_partially_filled(
+        &mut self,
+        params: ExitPartiallyFilledParams,
+    ) -> Result<ExitResult, Error> {
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+
+        let outbid_block = params.outbid_block.map_or(0u64, |block| block.as_u64());
+
+        let pending = cca
+            .exitPartiallyFilledBid(
+                params.bid_id.as_u256(),
+                params.last_fully_filled_checkpoint_block.as_u64(),
+                outbid_block,
+            )
+            .send()
+            .await
+            .map_err(TransactionError::from)?;
+
+        let receipt = pending
+            .with_required_confirmations(3)
+            .get_receipt()
+            .await
+            .map_err(TransactionError::from)?;
+
+        let receipt_body = receipt
+            .inner
+            .as_receipt()
+            .ok_or(TransactionError::MissingReceipt)?;
+
+        if !receipt_body.status() {
+            return Err(TransactionError::Reverted {
+                tx_hash: receipt.transaction_hash,
+            }
+            .into());
+        }
+
+        let exit_event = receipt_body
+            .logs()
+            .iter()
+            .find_map(|log| {
+                log.log_decode::<IContinuousClearingAuction::BidExited>()
+                    .ok()
+            })
+            .ok_or(TransactionError::MissingBidExitedEvent)?;
+
+        let data = exit_event.inner.data;
+        let tokens_filled = TokenAmount::new(data.tokensFilled);
+        let currency_refunded = CurrencyAmount::new(data.currencyRefunded);
+
+        Ok(ExitResult {
+            bid_id: params.bid_id,
+            tokens_filled,
+            currency_refunded,
+            tx_hash: receipt.transaction_hash,
+        })
+    }
+
+    // orchestration layer should validate: is_ended, is_graduated, bids.exited_block.is_none()
+    pub async fn prepare_exit_partially_filled(
+        &self,
+        bid_id: BidId,
+    ) -> Result<ExitPartiallyFilledParams, Error> {
+        let bids = self.fetch_bids(&[bid_id]).await?;
+        let bid = bids.first().ok_or(StateError::BidNotFound)?;
+
+        let hints = self.compute_exit_hints(bid).await?;
+
+        Ok(ExitPartiallyFilledParams {
+            bid_id,
+            last_fully_filled_checkpoint_block: hints.last_fully_filled_checkpoint_block,
+            outbid_block: hints.outbid_block,
         })
     }
 
