@@ -8,6 +8,7 @@ use crate::{
     error::{ConfigError, Error, StateError},
     hooks::ValidationHook,
     types::{
+        bid::Bid,
         checkpoint::Checkpoint,
         config::AuctionConfig,
         primitives::{
@@ -121,6 +122,60 @@ where
             tokens_received,
             currency_raised,
         })
+    }
+
+    pub async fn fetch_bids(&self, bid_ids: &[BidId]) -> Result<Vec<Bid>, Error> {
+        // Might we want to throw here?
+        if bid_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+
+        if bid_ids.len() == 1 {
+            let bid_id = bid_ids[0];
+            let bid_return = cca
+                .bids(bid_id.as_u256())
+                .call()
+                .await
+                .map_err(StateError::from)?;
+            return Ok(vec![Self::decode_bid(bid_id, bid_return)]);
+        }
+
+        let mut multicall = self.provider.multicall().dynamic();
+
+        for bid_id in bid_ids {
+            multicall = multicall.add_dynamic(cca.bids(bid_id.as_u256()));
+        }
+
+        let bid_returns = multicall.aggregate().await.map_err(StateError::from)?;
+
+        let bids = bid_ids
+            .iter()
+            .zip(bid_returns.into_iter())
+            .map(|(bid_id, bid_return)| Self::decode_bid(*bid_id, bid_return))
+            .collect();
+
+        Ok(bids)
+    }
+
+    fn decode_bid(bid_id: BidId, bid_return: IContinuousClearingAuction::Bid) -> Bid {
+        let exited_block = if bid_return.exitedBlock == 0 {
+            None
+        } else {
+            Some(BlockNumber::new(bid_return.exitedBlock))
+        };
+
+        Bid {
+            id: bid_id,
+            owner: bid_return.owner,
+            max_price: Price::new(bid_return.maxPrice),
+            amount: CurrencyAmount::new(bid_return.amountQ96),
+            start_block: BlockNumber::new(bid_return.startBlock),
+            start_cumulative_mps: Mps::new(bid_return.startCumulativeMps),
+            exited_block,
+            tokens_filled: TokenAmount::new(bid_return.tokensFilled),
+        }
     }
 
     pub async fn fetch_config(provider: &P, auction: Address) -> Result<AuctionConfig, Error> {

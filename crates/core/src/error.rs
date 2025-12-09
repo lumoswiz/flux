@@ -42,6 +42,9 @@ pub enum StateError {
     #[error("failed to fetch state: {0}")]
     Transport(#[from] TransportError),
 
+    #[error("contract call failed: {0}")]
+    Contract(#[from] contract::Error),
+
     #[error("multicall failed: {0}")]
     Multicall(#[from] MulticallError),
 }

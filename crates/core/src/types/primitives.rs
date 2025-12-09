@@ -97,6 +97,7 @@ impl TokenAmount {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct BidId(U256);
 
 impl BidId {
