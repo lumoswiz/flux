@@ -1,4 +1,26 @@
+use alloy::{contract, providers::MulticallError, transports::TransportError};
 use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error(transparent)]
+    Config(#[from] ConfigError),
+
+    #[error(transparent)]
+    Hook(#[from] HookError),
+}
+
+#[derive(Debug, Error)]
+pub enum ConfigError {
+    #[error("failed to fetch config: {0}")]
+    Transport(#[from] TransportError),
+
+    #[error("contract call failed: {0}")]
+    Contract(#[from] contract::Error),
+
+    #[error("multicall failed: {0}")]
+    Multicall(#[from] MulticallError),
+}
 
 #[derive(Debug, Error)]
 pub enum HookError {

@@ -111,7 +111,7 @@ impl BidId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BlockNumber(u64);
 
 impl BlockNumber {
@@ -168,12 +168,8 @@ impl CurrencyAddr {
 pub struct TokenAddr(Address);
 
 impl TokenAddr {
-    pub fn new(value: Address) -> Option<Self> {
-        if value == Address::ZERO {
-            None
-        } else {
-            Some(Self(value))
-        }
+    pub fn new(value: Address) -> Self {
+        Self(value)
     }
 
     pub fn as_address(&self) -> Address {
