@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use alloy::primitives::{Address, U256};
+use alloy::primitives::{Address, Bytes, U256};
 use alloy::providers::Provider;
 use flux_abi::{IContinuousClearingAuction, IERC20Minimal};
 
 use crate::{
-    error::{ConfigError, Error, StateError},
+    error::{ConfigError, Error, StateError, ValidationError},
     hooks::ValidationHook,
     types::{
+        action::{SubmitBidInput, SubmitBidParams},
         bid::Bid,
         checkpoint::Checkpoint,
         config::AuctionConfig,
@@ -15,7 +16,7 @@ use crate::{
             BidId, BlockNumber, CurrencyAddr, CurrencyAmount, HookAddr, Mps, Price, TickSpacing,
             TokenAddr, TokenAmount,
         },
-        state::{AuctionState, GraduationStatus, TokenDepositStatus},
+        state::{AuctionPhase, AuctionState, GraduationStatus, TokenDepositStatus},
     },
 };
 
@@ -221,5 +222,111 @@ where
             token: TokenAddr::new(token),
             validation_hook: HookAddr::new(validation_hook),
         })
+    }
+
+    pub async fn validate_bid_params(
+        &self,
+        input: SubmitBidInput,
+        state: &AuctionState,
+    ) -> Result<SubmitBidParams, Error> {
+        let current_block = state.current_block.as_u64();
+        let start_block = self.config.start_block.as_u64();
+        let end_block = self.config.end_block.as_u64();
+
+        if current_block < start_block {
+            return Err(ValidationError::AuctionNotStarted.into());
+        }
+
+        if current_block >= end_block {
+            return Err(ValidationError::AuctionIsOver.into());
+        }
+
+        if !matches!(state.phase, AuctionPhase::Active { .. }) {
+            return Err(ValidationError::AuctionNotActive.into());
+        }
+
+        if !matches!(state.tokens_received, TokenDepositStatus::Received) {
+            return Err(ValidationError::TokensNotReceived.into());
+        }
+
+        if input.amount.is_zero() {
+            return Err(ValidationError::AmountTooSmall.into());
+        }
+
+        if input.owner == Address::ZERO {
+            return Err(ValidationError::OwnerIsZeroAddress.into());
+        }
+
+        if !self.config.is_valid_price(input.max_price) {
+            return Err(ValidationError::InvalidPrice.into());
+        }
+
+        if state.checkpoint.is_sold_out() {
+            return Err(ValidationError::AuctionSoldOut.into());
+        }
+
+        if input.max_price <= state.checkpoint.clearing_price {
+            return Err(ValidationError::BidBelowClearingPrice.into());
+        }
+
+        let amount = input.amount;
+
+        let mut params = SubmitBidParams {
+            max_price: input.max_price,
+            amount,
+            owner: input.owner,
+            prev_tick_price: self.compute_prev_tick_price(input.max_price).await?,
+            hook_data: Bytes::new(),
+            value: CurrencyAmount::new(U256::ZERO),
+        };
+
+        if self.config.is_native_currency() {
+            params.value = amount;
+        }
+
+        let hook_data = self.hook.prepare_hook_data(&params, state).await?;
+        params.hook_data = hook_data;
+
+        self.hook.validate(&params, state).await?;
+
+        Ok(params)
+    }
+
+    pub async fn compute_prev_tick_price(&self, max_price: Price) -> Result<Price, Error> {
+        if !self.config.is_valid_price(max_price) {
+            return Err(ValidationError::InvalidPrice.into());
+        }
+
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+        let mut prev = self.config.floor_price;
+
+        let next_active = Price::new(
+            cca.nextActiveTickPrice()
+                .call()
+                .await
+                .map_err(StateError::from)?,
+        );
+        if next_active < max_price && next_active >= prev {
+            prev = next_active;
+        }
+
+        loop {
+            let tick_return = cca
+                .ticks(prev.as_u256())
+                .call()
+                .await
+                .map_err(StateError::from)?;
+            let next_price = Price::new(tick_return.next);
+
+            if next_price >= max_price {
+                break Ok(prev);
+            }
+
+            if next_price == prev {
+                break Ok(prev);
+            }
+
+            prev = next_price;
+        }
     }
 }

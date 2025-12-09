@@ -7,6 +7,9 @@ pub enum Error {
     Config(#[from] ConfigError),
 
     #[error(transparent)]
+    Validation(#[from] ValidationError),
+
+    #[error(transparent)]
     Hook(#[from] HookError),
 
     #[error(transparent)]
@@ -23,6 +26,36 @@ pub enum ConfigError {
 
     #[error("multicall failed: {0}")]
     Multicall(#[from] MulticallError),
+}
+
+#[derive(Debug, Error)]
+pub enum ValidationError {
+    #[error("auction not active")]
+    AuctionNotActive,
+
+    #[error("tokens not deposited")]
+    TokensNotReceived,
+
+    #[error("auction not started")]
+    AuctionNotStarted,
+
+    #[error("auction already over")]
+    AuctionIsOver,
+
+    #[error("bid amount must be greater than zero")]
+    AmountTooSmall,
+
+    #[error("bid owner cannot be zero address")]
+    OwnerIsZeroAddress,
+
+    #[error("bid price is invalid for this auction")]
+    InvalidPrice,
+
+    #[error("bid price must be above current clearing price")]
+    BidBelowClearingPrice,
+
+    #[error("auction is sold out")]
+    AuctionSoldOut,
 }
 
 #[derive(Debug, Error)]

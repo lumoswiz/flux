@@ -14,6 +14,7 @@ pub struct SubmitBidParams {
     pub owner: Address,
     pub prev_tick_price: Price,
     pub hook_data: Bytes,
+    pub value: CurrencyAmount,
 }
 
 pub struct ExitBidParams {

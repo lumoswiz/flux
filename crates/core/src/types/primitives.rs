@@ -19,7 +19,7 @@ impl TickSpacing {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct Price(U256);
 
 impl Price {
@@ -63,6 +63,7 @@ impl Price {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct CurrencyAmount(U256);
 
 impl CurrencyAmount {
@@ -79,6 +80,7 @@ impl CurrencyAmount {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct TokenAmount(U256);
 
 impl TokenAmount {
@@ -110,7 +112,7 @@ impl BidId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct BlockNumber(u64);
 
 impl BlockNumber {

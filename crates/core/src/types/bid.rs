@@ -27,9 +27,9 @@ pub struct Bid {
 
 impl Bid {
     pub fn status(&self, clearing_price: Price) -> BidStatus {
-        if self.max_price.as_u256() > clearing_price.as_u256() {
+        if self.max_price > clearing_price {
             BidStatus::ITM
-        } else if self.max_price.as_u256() == clearing_price.as_u256() {
+        } else if self.max_price == clearing_price {
             BidStatus::ATM
         } else {
             BidStatus::OTM
