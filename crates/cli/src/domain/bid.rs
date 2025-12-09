@@ -1,6 +1,6 @@
 use crate::domain::auction::{AuctionInfo, AuctionPhase};
 use alloy::primitives::{Address, U256};
-use flux_abi::Bid as AbiBid;
+use flux_abi::IContinuousClearingAuction::Bid;
 
 /// Canonical representation of a user's bid in an auction,
 /// derived from the on-chain `Bid` struct.
@@ -105,8 +105,8 @@ impl BidInfo {
 /// The commands layer will typically:
 ///   let b = auction.bids(bid_id).call().await?;
 ///   let info: BidInfo = (auction_addr, bid_id, b).into();
-impl From<(Address, U256, AbiBid)> for BidInfo {
-    fn from((auction_addr, bid_id, b): (Address, U256, AbiBid)) -> Self {
+impl From<(Address, U256, Bid)> for BidInfo {
+    fn from((auction_addr, bid_id, b): (Address, U256, Bid)) -> Self {
         Self {
             auction: auction_addr,
             bid_id,
