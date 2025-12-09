@@ -1,4 +1,4 @@
-use alloy::primitives::{Address, U256};
+use alloy::primitives::{Address, U256, aliases::U24};
 
 #[derive(Clone, Copy)]
 pub struct TickSpacing(U256);
@@ -63,21 +63,19 @@ impl Price {
     }
 }
 
-pub struct CurrencyAmount(u128);
+pub struct CurrencyAmount(U256);
 
 impl CurrencyAmount {
-    pub const ZERO: Self = Self(0);
-
-    pub fn new(value: u128) -> Self {
+    pub fn new(value: U256) -> Self {
         Self(value)
     }
 
-    pub fn as_u128(&self) -> u128 {
+    pub fn as_u256(&self) -> U256 {
         self.0
     }
 
     pub fn is_zero(&self) -> bool {
-        self.0 == 0
+        self.0 == U256::ZERO
     }
 }
 
@@ -126,26 +124,26 @@ impl BlockNumber {
     }
 }
 
-pub struct Mps(u32);
+pub struct Mps(U24);
 
 impl Mps {
-    pub const FULL: Self = Self(10_000_000);
-    pub const ZERO: Self = Self(0);
+    pub const FULL: u32 = 10_000_000;
+    pub const ZERO: u32 = 0;
 
-    pub fn new(value: u32) -> Self {
+    pub fn new(value: U24) -> Self {
         Self(value)
     }
 
-    pub fn as_u32(&self) -> u32 {
+    pub fn as_u24(&self) -> U24 {
         self.0
     }
 
     pub fn remaining(&self) -> Self {
-        Self(Self::FULL.0 - self.0)
+        Self(U24::from(Self::FULL) - self.0)
     }
 
     pub fn is_sold_out(&self) -> bool {
-        self.0 >= Self::FULL.0
+        self.0 >= U24::from(Self::FULL)
     }
 }
 

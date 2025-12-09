@@ -8,6 +8,9 @@ pub enum Error {
 
     #[error(transparent)]
     Hook(#[from] HookError),
+
+    #[error(transparent)]
+    State(#[from] StateError),
 }
 
 #[derive(Debug, Error)]
@@ -32,4 +35,13 @@ pub enum HookError {
 
     #[error("hook validation failed: {0}")]
     ValidationFailed(String),
+}
+
+#[derive(Debug, Error)]
+pub enum StateError {
+    #[error("failed to fetch state: {0}")]
+    Transport(#[from] TransportError),
+
+    #[error("multicall failed: {0}")]
+    Multicall(#[from] MulticallError),
 }
