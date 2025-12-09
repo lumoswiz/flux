@@ -226,9 +226,9 @@ where
 
     pub async fn validate_bid_params(
         &self,
-        input: SubmitBidInput,
+        input: &SubmitBidInput,
         state: &AuctionState,
-    ) -> Result<SubmitBidParams, Error> {
+    ) -> Result<(), Error> {
         let current_block = state.current_block.as_u64();
         let start_block = self.config.start_block.as_u64();
         let end_block = self.config.end_block.as_u64();
@@ -269,13 +269,21 @@ where
             return Err(ValidationError::BidBelowClearingPrice.into());
         }
 
+        Ok(())
+    }
+
+    pub async fn prepare_bid(&self, input: SubmitBidInput) -> Result<SubmitBidParams, Error> {
+        let state = self.fetch_state().await?;
+        self.validate_bid_params(&input, &state).await?;
+
+        let prev_tick_price = self.compute_prev_tick_price(input.max_price).await?;
         let amount = input.amount;
 
         let mut params = SubmitBidParams {
             max_price: input.max_price,
             amount,
             owner: input.owner,
-            prev_tick_price: self.compute_prev_tick_price(input.max_price).await?,
+            prev_tick_price,
             hook_data: Bytes::new(),
             value: CurrencyAmount::new(U256::ZERO),
         };
@@ -284,10 +292,10 @@ where
             params.value = amount;
         }
 
-        let hook_data = self.hook.prepare_hook_data(&params, state).await?;
+        let hook_data = self.hook.prepare_hook_data(&params, &state).await?;
         params.hook_data = hook_data;
 
-        self.hook.validate(&params, state).await?;
+        self.hook.validate(&params, &state).await?;
 
         Ok(params)
     }
