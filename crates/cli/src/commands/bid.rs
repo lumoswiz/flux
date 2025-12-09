@@ -1,9 +1,9 @@
 // src/commands/bid.rs
-use crate::abi::IContinuousClearingAuction;
 use crate::domain::price::q96_from_ratio;
 use crate::provider::ChainContext;
 use alloy::primitives::{Address, U256};
 use anyhow::Result;
+use flux_abi::IContinuousClearingAuction;
 
 pub struct BidArgs {
     pub auction: Address,

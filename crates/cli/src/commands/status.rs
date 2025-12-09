@@ -4,12 +4,9 @@ use alloy::{
 };
 use eyre::Result;
 
-use crate::{
-    abi::{
-        IAuctionStateLens, IBidStorage, IContinuousClearingAuction, IStepStorage,
-        ITokenCurrencyStorage,
-    },
-    domain::{AuctionInfo, BidInfo, BidStatus, ExtraAuctionInfo},
+use crate::domain::{AuctionInfo, BidInfo, BidStatus, ExtraAuctionInfo};
+use flux_abi::{
+    IAuctionStateLens, IBidStorage, IContinuousClearingAuction, IStepStorage, ITokenCurrencyStorage,
 };
 
 #[derive(Debug, Clone)]

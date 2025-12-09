@@ -1,6 +1,6 @@
-use crate::abi::Bid as AbiBid;
 use crate::domain::auction::{AuctionInfo, AuctionPhase};
 use alloy::primitives::{Address, U256};
+use flux_abi::Bid as AbiBid;
 
 /// Canonical representation of a user's bid in an auction,
 /// derived from the on-chain `Bid` struct.

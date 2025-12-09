@@ -1,7 +1,7 @@
 // src/domain/auction.rs
 
-use crate::abi::AuctionState;
 use alloy::primitives::{Address, U256};
+use flux_abi::AuctionState;
 
 /// High-level view of an auction's state (for CLI/TUI).
 #[derive(Debug, Clone)]
