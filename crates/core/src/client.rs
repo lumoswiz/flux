@@ -12,7 +12,7 @@ use crate::{
     hooks::ValidationHook,
     types::{
         action::{ExitBidParams, ExitResult, SubmitBidInput, SubmitBidParams, SubmitBidResult},
-        bid::Bid,
+        bid::{Bid, TrackedBid},
         checkpoint::Checkpoint,
         config::AuctionConfig,
         primitives::{
@@ -31,7 +31,7 @@ where
     auction: Address,
     owner: Address,
     hook: Arc<dyn ValidationHook>,
-    tracked_bids: Vec<BidId>,
+    tracked_bids: Vec<TrackedBid>,
     config: AuctionConfig,
 }
 
@@ -44,7 +44,7 @@ where
         auction: Address,
         owner: Address,
         hook: impl Into<Arc<dyn ValidationHook>>,
-        tracked_bids: Vec<BidId>,
+        tracked_bids: Vec<TrackedBid>,
     ) -> Result<Self, Error> {
         let config = Self::fetch_config(&provider, auction).await?;
         Ok(Self {
@@ -345,7 +345,10 @@ where
             .map(|decoded| BidId::new(decoded.inner.data.id))
             .ok_or(TransactionError::MissingBidSubmittedEvent)?;
 
-        self.tracked_bids.push(bid_id);
+        self.tracked_bids.push(TrackedBid {
+            id: bid_id,
+            tx_hash: receipt.transaction_hash,
+        });
 
         Ok(SubmitBidResult {
             bid_id,

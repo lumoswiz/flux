@@ -1,4 +1,4 @@
-use alloy::primitives::Address;
+use alloy::primitives::{Address, B256};
 
 use super::primitives::{BidId, BlockNumber, CurrencyAmount, Mps, Price, TokenAmount};
 
@@ -51,4 +51,9 @@ impl Bid {
     pub fn needs_claim(&self) -> bool {
         self.exited_block.is_some() && !self.tokens_filled.is_zero()
     }
+}
+
+pub struct TrackedBid {
+    pub id: BidId,
+    pub tx_hash: B256,
 }
