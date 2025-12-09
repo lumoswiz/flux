@@ -68,6 +68,14 @@ where
         self.auction
     }
 
+    pub fn owner(&self) -> Address {
+        self.owner
+    }
+
+    pub fn tracked_bids(&self) -> impl Iterator<Item = &TrackedBid> {
+        self.tracked_bids.iter()
+    }
+
     pub async fn fetch_state(&self) -> Result<AuctionState, Error> {
         let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
         let token = IERC20Minimal::new(self.config.token.as_address(), &self.provider);
