@@ -12,8 +12,8 @@ use crate::{
     hooks::ValidationHook,
     types::{
         action::{
-            ExitBidParams, ExitHints, ExitPartiallyFilledParams, ExitResult, SubmitBidInput,
-            SubmitBidParams, SubmitBidResult,
+            ClaimParams, ClaimResult, ExitBidParams, ExitHints, ExitPartiallyFilledParams,
+            ExitResult, SubmitBidInput, SubmitBidParams, SubmitBidResult,
         },
         bid::{Bid, TrackedBid},
         checkpoint::Checkpoint,
@@ -460,6 +460,65 @@ where
             bid_id: params.bid_id,
             tokens_filled,
             currency_refunded,
+            tx_hash: receipt.transaction_hash,
+        })
+    }
+
+    // orchestration layer must validate owner <--> bid_ids
+    pub async fn claim(&mut self, params: ClaimParams) -> Result<ClaimResult, Error> {
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+
+        let pending = if params.bid_ids.len() == 1 {
+            let bid_id = params.bid_ids[0].as_u256();
+            cca.claimTokens(bid_id)
+                .send()
+                .await
+                .map_err(TransactionError::from)?
+        } else {
+            let bid_ids: Vec<_> = params.bid_ids.iter().map(|b| b.as_u256()).collect();
+            cca.claimTokensBatch(params.owner, bid_ids)
+                .send()
+                .await
+                .map_err(TransactionError::from)?
+        };
+
+        let receipt = pending
+            .with_required_confirmations(1)
+            .get_receipt()
+            .await
+            .map_err(TransactionError::from)?;
+
+        let receipt_body = receipt
+            .inner
+            .as_receipt()
+            .ok_or(TransactionError::MissingReceipt)?;
+
+        if !receipt_body.status() {
+            return Err(TransactionError::Reverted {
+                tx_hash: receipt.transaction_hash,
+            }
+            .into());
+        }
+
+        let mut found = false;
+        let mut total_tokens = TokenAmount::ZERO;
+
+        for log in receipt_body.logs() {
+            if let Ok(decoded) = log.log_decode::<IContinuousClearingAuction::TokensClaimed>() {
+                let amount = TokenAmount::new(decoded.inner.data.tokensFilled);
+                let sum = total_tokens.as_u256() + amount.as_u256();
+                total_tokens = TokenAmount::new(sum);
+                found = true;
+            }
+        }
+
+        if !found {
+            return Err(TransactionError::MissingTokensClaimedEvent.into());
+        }
+
+        Ok(ClaimResult {
+            bid_ids: params.bid_ids,
+            total_tokens,
             tx_hash: receipt.transaction_hash,
         })
     }
