@@ -104,6 +104,9 @@ pub enum TransactionError {
     #[error("BidSubmitted event not found in receipt logs")]
     MissingBidSubmittedEvent,
 
+    #[error("BidExited event not found in receipt logs")]
+    MissingBidExitedEvent,
+
     #[error("transaction reverted: {tx_hash:?}")]
     Reverted { tx_hash: B256 },
 }

@@ -11,7 +11,7 @@ use crate::{
     error::{ConfigError, Error, StateError, TransactionError, ValidationError},
     hooks::ValidationHook,
     types::{
-        action::{SubmitBidInput, SubmitBidParams, SubmitBidResult},
+        action::{ExitBidParams, ExitResult, SubmitBidInput, SubmitBidParams, SubmitBidResult},
         bid::Bid,
         checkpoint::Checkpoint,
         config::AuctionConfig,
@@ -349,6 +349,54 @@ where
 
         Ok(SubmitBidResult {
             bid_id,
+            tx_hash: receipt.transaction_hash,
+        })
+    }
+
+    pub async fn exit_bid(&mut self, params: ExitBidParams) -> Result<ExitResult, Error> {
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+
+        let pending = cca
+            .exitBid(params.bid_id.as_u256())
+            .send()
+            .await
+            .map_err(TransactionError::from)?;
+
+        let receipt = pending
+            .with_required_confirmations(1)
+            .get_receipt()
+            .await
+            .map_err(TransactionError::from)?;
+
+        let receipt_body = receipt
+            .inner
+            .as_receipt()
+            .ok_or(TransactionError::MissingReceipt)?;
+
+        if !receipt_body.status() {
+            return Err(TransactionError::Reverted {
+                tx_hash: receipt.transaction_hash,
+            }
+            .into());
+        }
+
+        let exit_event = receipt_body
+            .logs()
+            .iter()
+            .find_map(|log| {
+                log.log_decode::<IContinuousClearingAuction::BidExited>()
+                    .ok()
+            })
+            .ok_or(TransactionError::MissingBidExitedEvent)?;
+
+        let data = exit_event.inner.data;
+        let tokens_filled = TokenAmount::new(data.tokensFilled);
+        let currency_refunded = CurrencyAmount::new(data.currencyRefunded);
+
+        Ok(ExitResult {
+            bid_id: params.bid_id,
+            tokens_filled,
+            currency_refunded,
             tx_hash: receipt.transaction_hash,
         })
     }
