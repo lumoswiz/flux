@@ -15,9 +15,9 @@ struct Cli {
     #[arg(short, long, default_value = DEFAULT_CONFIG_PATH, value_name = "FILE")]
     config: PathBuf,
 
-    /// RPC URL for the target chain
+    /// RPC URL for the target chain (only required for on-chain commands like `status`)
     #[arg(long, env = "CCA_RPC_URL", value_name = "URL")]
-    rpc_url: String,
+    rpc_url: Option<String>,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -75,7 +75,14 @@ async fn main() -> eyre::Result<()> {
 
     match cli.command {
         Some(Commands::Bids(args)) => handle_bids(&config, args),
-        Some(Commands::Status(args)) => handle_status(&cli.rpc_url, args).await?,
+        Some(Commands::Status(args)) => {
+            let rpc_url = cli
+                .rpc_url
+                .as_deref()
+                .ok_or_else(|| eyre::eyre!("--rpc-url or CCA_RPC_URL is required for `status`"))?;
+
+            handle_status(rpc_url, args).await?
+        }
         None => {
             println!("Loaded config from {}", cli.config.display());
         }
