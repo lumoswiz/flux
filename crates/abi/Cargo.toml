@@ -1,0 +1,7 @@
+[package]
+name = "flux-abi"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+alloy.workspace = true
