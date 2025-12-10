@@ -3,7 +3,7 @@ use crate::types::{
     state::{GraduationStatus, TokenDepositStatus},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct OrchestratorCache {
     pub tokens_received: TokenDepositStatus,
     pub graduated: GraduationStatus,

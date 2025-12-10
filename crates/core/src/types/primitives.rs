@@ -1,3 +1,5 @@
+use std::ops::{Add, AddAssign};
+
 use alloy::primitives::{Address, U256, aliases::U24};
 
 #[derive(Clone, Copy, Debug)]
@@ -67,6 +69,8 @@ impl Price {
 pub struct CurrencyAmount(U256);
 
 impl CurrencyAmount {
+    pub const ZERO: Self = Self(U256::ZERO);
+
     pub fn new(value: U256) -> Self {
         Self(value)
     }
@@ -103,6 +107,20 @@ impl TokenAmount {
     }
 }
 
+impl Add for TokenAmount {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl AddAssign for TokenAmount {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct BidId(U256);
 
@@ -116,7 +134,7 @@ impl BidId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BlockNumber(u64);
 
 impl BlockNumber {
