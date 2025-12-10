@@ -73,6 +73,33 @@ pub enum ValidationError {
 
     #[error("cannot partially exit bid before graduation")]
     CannotPartiallyExitBeforeGraduation,
+
+    #[error("bid is not ITM")]
+    BidNotITM,
+
+    #[error("bid is ITM, use exitBid instead")]
+    BidIsITM,
+
+    #[error("bid is not OTM")]
+    BidNotOutbid,
+
+    #[error("claim block not yet reached")]
+    ClaimBlockNotReached,
+
+    #[error("auction not graduated")]
+    NotGraduated,
+
+    #[error("bid not yet exited")]
+    BidNotExited,
+
+    #[error("bid has no tokens to claim")]
+    NoTokensToClaim,
+
+    #[error("bid owner does not match expected owner")]
+    OwnerMismatch,
+
+    #[error("auction not graduated, use exitBid for full refund")]
+    UseExitBidForRefund,
 }
 
 #[derive(Debug, Error)]
