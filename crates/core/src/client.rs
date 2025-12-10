@@ -120,7 +120,7 @@ where
             .await
             .map_err(StateError::from)?;
 
-        if U256::from(balance) >= self.config.total_supply.as_u256() {
+        if TokenAmount::new(balance) >= self.config.total_supply {
             Ok(TokenDepositStatus::Received)
         } else {
             Ok(TokenDepositStatus::NotReceived)
@@ -452,8 +452,7 @@ where
         for log in receipt_body.logs() {
             if let Ok(decoded) = log.log_decode::<IContinuousClearingAuction::TokensClaimed>() {
                 let amount = TokenAmount::new(decoded.inner.data.tokensFilled);
-                let sum = total_tokens.as_u256() + amount.as_u256();
-                total_tokens = TokenAmount::new(sum);
+                total_tokens += amount;
                 found = true;
             }
         }

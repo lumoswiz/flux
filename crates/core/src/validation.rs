@@ -15,9 +15,9 @@ pub fn validate_submit_bid(
     state: &AuctionState,
     config: &AuctionConfig,
 ) -> Result<(), ValidationError> {
-    let current_block = state.current_block.as_u64();
-    let start_block = config.start_block.as_u64();
-    let end_block = config.end_block.as_u64();
+    let current_block = state.current_block;
+    let start_block = config.start_block;
+    let end_block = config.end_block;
 
     if current_block < start_block {
         return Err(ValidationError::AuctionNotStarted);
@@ -63,8 +63,8 @@ pub fn validate_exit_bid(
     state: &AuctionState,
     config: &AuctionConfig,
 ) -> Result<(), ValidationError> {
-    let current_block = state.current_block.as_u64();
-    let end_block = config.end_block.as_u64();
+    let current_block = state.current_block;
+    let end_block = config.end_block;
 
     if current_block < end_block {
         return Err(ValidationError::AuctionNotOver);
@@ -94,7 +94,7 @@ pub fn validate_exit_partially_filled(
     }
 
     let is_graduated = matches!(state.graduation, GraduationStatus::Graduated);
-    let is_ended = state.current_block.as_u64() >= config.end_block.as_u64();
+    let is_ended = state.current_block >= config.end_block;
     let status = bid.status(state.checkpoint.clearing_price);
 
     match (is_graduated, is_ended) {
@@ -128,8 +128,8 @@ pub fn validate_claim(
     state: &AuctionState,
     config: &AuctionConfig,
 ) -> Result<(), ValidationError> {
-    let current_block = state.current_block.as_u64();
-    let claim_block = config.claim_block.as_u64();
+    let current_block = state.current_block;
+    let claim_block = config.claim_block;
 
     if current_block < claim_block {
         return Err(ValidationError::ClaimBlockNotReached);
