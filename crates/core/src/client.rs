@@ -8,7 +8,7 @@ use alloy::{
 use flux_abi::{IContinuousClearingAuction, IERC20Minimal};
 
 use crate::{
-    error::{ConfigError, Error, StateError, TransactionError, ValidationError},
+    error::{ConfigError, Error, StateError, TransactionError},
     hooks::ValidationHook,
     types::{
         action::{
@@ -74,6 +74,10 @@ where
 
     pub fn tracked_bids(&self) -> impl Iterator<Item = &TrackedBid> {
         self.tracked_bids.iter()
+    }
+
+    pub fn hook(&self) -> &Arc<dyn ValidationHook> {
+        &self.hook
     }
 
     pub async fn fetch_state(&self) -> Result<AuctionState, Error> {
@@ -238,58 +242,11 @@ where
         })
     }
 
-    pub async fn validate_bid_params(
+    pub async fn prepare_bid(
         &self,
-        input: &SubmitBidInput,
+        input: SubmitBidInput,
         state: &AuctionState,
-    ) -> Result<(), Error> {
-        let current_block = state.current_block.as_u64();
-        let start_block = self.config.start_block.as_u64();
-        let end_block = self.config.end_block.as_u64();
-
-        if current_block < start_block {
-            return Err(ValidationError::AuctionNotStarted.into());
-        }
-
-        if current_block >= end_block {
-            return Err(ValidationError::AuctionIsOver.into());
-        }
-
-        if !matches!(state.phase, AuctionPhase::Active { .. }) {
-            return Err(ValidationError::AuctionNotActive.into());
-        }
-
-        if !matches!(state.tokens_received, TokenDepositStatus::Received) {
-            return Err(ValidationError::TokensNotReceived.into());
-        }
-
-        if input.amount.is_zero() {
-            return Err(ValidationError::AmountTooSmall.into());
-        }
-
-        if input.owner == Address::ZERO {
-            return Err(ValidationError::OwnerIsZeroAddress.into());
-        }
-
-        if !self.config.is_valid_price(input.max_price) {
-            return Err(ValidationError::InvalidPrice.into());
-        }
-
-        if state.checkpoint.is_sold_out() {
-            return Err(ValidationError::AuctionSoldOut.into());
-        }
-
-        if input.max_price <= state.checkpoint.clearing_price {
-            return Err(ValidationError::BidBelowClearingPrice.into());
-        }
-
-        Ok(())
-    }
-
-    pub async fn prepare_bid(&self, input: SubmitBidInput) -> Result<SubmitBidParams, Error> {
-        let state = self.fetch_state().await?;
-        self.validate_bid_params(&input, &state).await?;
-
+    ) -> Result<SubmitBidParams, Error> {
         let prev_tick_price = self.compute_prev_tick_price(input.max_price).await?;
         let amount = input.amount;
 
@@ -306,10 +263,8 @@ where
             params.value = amount;
         }
 
-        let hook_data = self.hook.prepare_hook_data(&params, &state).await?;
+        let hook_data = self.hook.prepare_hook_data(&params, state).await?;
         params.hook_data = hook_data;
-
-        self.hook.validate(&params, &state).await?;
 
         Ok(params)
     }
@@ -549,10 +504,6 @@ where
     }
 
     pub async fn compute_prev_tick_price(&self, max_price: Price) -> Result<Price, Error> {
-        if !self.config.is_valid_price(max_price) {
-            return Err(ValidationError::InvalidPrice.into());
-        }
-
         let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
         let mut prev = self.config.floor_price;
 
