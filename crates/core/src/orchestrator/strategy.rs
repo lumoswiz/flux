@@ -1,7 +1,6 @@
 use crate::types::{
-    action::SubmitBidInput,
     config::AuctionConfig,
-    primitives::{BidId, BlockNumber},
+    primitives::{BidId, BlockNumber, CurrencyAmount, Price},
     state::AuctionPhase,
 };
 
@@ -21,7 +20,7 @@ pub trait Strategy: Send + Sync {
 
 #[derive(Clone, Debug)]
 pub enum Intent {
-    SubmitBid(SubmitBidInput),
+    SubmitBid { max_price: Price, amount: CurrencyAmount },
     Exit { bid_id: BidId },
     Claim(Vec<BidId>),
     Skip,

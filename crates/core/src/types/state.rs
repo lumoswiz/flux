@@ -4,14 +4,16 @@ use super::{
     primitives::{BlockNumber, CurrencyAmount},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum GraduationStatus {
+    #[default]
     NotGraduated,
     Graduated,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum TokenDepositStatus {
+    #[default]
     Unknown,
     NotReceived,
     Received,
@@ -37,6 +39,23 @@ pub struct AuctionState {
 }
 
 impl AuctionState {
+    pub fn new(
+        block: BlockNumber,
+        checkpoint: Checkpoint,
+        graduation: GraduationStatus,
+        tokens_received: TokenDepositStatus,
+        config: &AuctionConfig,
+    ) -> Self {
+        Self {
+            current_block: block,
+            phase: Self::compute_phase(config, block, tokens_received),
+            checkpoint,
+            graduation,
+            tokens_received,
+            currency_raised: CurrencyAmount::ZERO,
+        }
+    }
+
     pub fn compute_phase(
         config: &AuctionConfig,
         current_block: BlockNumber,

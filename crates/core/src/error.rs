@@ -130,6 +130,9 @@ pub enum StateError {
 
     #[error("bid not found")]
     BidNotFound,
+
+    #[error("final checkpoint not cached when expected")]
+    FinalCheckpointNotCached,
 }
 
 #[derive(Debug, Error)]
