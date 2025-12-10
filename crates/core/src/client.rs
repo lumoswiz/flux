@@ -22,7 +22,7 @@ use crate::{
             BidId, BlockNumber, CurrencyAddr, CurrencyAmount, HookAddr, Mps, Price, TickSpacing,
             TokenAddr, TokenAmount,
         },
-        state::{AuctionPhase, AuctionState, GraduationStatus, TokenDepositStatus},
+        state::{AuctionState, GraduationStatus, TokenDepositStatus},
     },
 };
 
@@ -427,7 +427,6 @@ where
         })
     }
 
-    // orchestration layer must validate owner <--> bid_ids
     pub async fn claim(&mut self, params: ClaimParams) -> Result<ClaimResult, Error> {
         let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
 
@@ -486,7 +485,6 @@ where
         })
     }
 
-    // orchestration layer should validate: is_ended, is_graduated, bids.exited_block.is_none()
     pub async fn prepare_exit_partially_filled(
         &self,
         bid_id: BidId,

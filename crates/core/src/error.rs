@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error(transparent)]
     Transaction(#[from] TransactionError),
+
+    #[error(transparent)]
+    BlockStream(#[from] BlockStreamError),
 }
 
 #[derive(Debug, Error)]
@@ -151,4 +154,10 @@ pub enum TransactionError {
 
     #[error("transaction reverted: {tx_hash:?}")]
     Reverted { tx_hash: B256 },
+}
+
+#[derive(Debug, Error)]
+pub enum BlockStreamError {
+    #[error("block stream error: {0}")]
+    Transport(#[from] TransportError),
 }
