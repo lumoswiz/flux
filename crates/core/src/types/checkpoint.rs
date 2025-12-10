@@ -1,5 +1,6 @@
 use super::primitives::{BlockNumber, Mps, Price};
 
+#[derive(Clone, Copy, Debug)]
 pub struct Checkpoint {
     pub block: BlockNumber,
     pub clearing_price: Price,

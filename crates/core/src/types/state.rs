@@ -17,6 +17,7 @@ pub enum TokenDepositStatus {
     Received,
 }
 
+#[derive(Clone, Debug)]
 pub enum AuctionPhase {
     PreStart { blocks_until_start: u64 },
     PreTokens,
@@ -25,6 +26,7 @@ pub enum AuctionPhase {
     Claimable,
 }
 
+#[derive(Clone, Debug)]
 pub struct AuctionState {
     pub current_block: BlockNumber,
     pub phase: AuctionPhase,
