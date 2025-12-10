@@ -80,67 +80,51 @@ where
         &self.hook
     }
 
-    pub async fn fetch_state(&self) -> Result<AuctionState, Error> {
+    pub async fn fetch_checkpoint(&self) -> Result<Checkpoint, Error> {
         let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
-        let token = IERC20Minimal::new(self.config.token.as_address(), &self.provider);
 
-        let (
-            checkpoint_raw,
-            is_graduated,
-            currency_raised_raw,
-            last_checkpoint_block,
-            token_balance,
-        ) = self
+        let (raw, block) = self
             .provider
             .multicall()
             .add(cca.latestCheckpoint())
-            .add(cca.isGraduated())
-            .add(cca.currencyRaised())
             .add(cca.lastCheckpointedBlock())
-            .add(token.balanceOf(self.auction))
             .aggregate()
             .await
             .map_err(StateError::from)?;
 
-        let current_block = BlockNumber::new(
-            self.provider
-                .get_block_number()
-                .await
-                .map_err(StateError::from)?,
-        );
+        Ok(Checkpoint {
+            block: BlockNumber::new(block),
+            clearing_price: Price::new(raw.clearingPrice),
+            cumulative_mps: Mps::new(raw.cumulativeMps),
+            prev_block: BlockNumber::new(raw.prev),
+            next_block: BlockNumber::new(raw.next),
+        })
+    }
 
-        let checkpoint = Checkpoint {
-            block: BlockNumber::new(last_checkpoint_block),
-            clearing_price: Price::new(checkpoint_raw.clearingPrice),
-            cumulative_mps: Mps::new(checkpoint_raw.cumulativeMps),
-            prev_block: BlockNumber::new(checkpoint_raw.prev),
-            next_block: BlockNumber::new(checkpoint_raw.next),
-        };
+    pub async fn fetch_graduation(&self) -> Result<GraduationStatus, Error> {
+        let cca = IContinuousClearingAuction::new(self.auction, &self.provider);
+        let graduated = cca.isGraduated().call().await.map_err(StateError::from)?;
 
-        let tokens_received = if U256::from(token_balance) >= self.config.total_supply.as_u256() {
-            TokenDepositStatus::Received
-        } else {
-            TokenDepositStatus::NotReceived
-        };
-
-        let phase = AuctionState::compute_phase(&self.config, current_block, tokens_received);
-
-        let graduation = if is_graduated {
+        Ok(if graduated {
             GraduationStatus::Graduated
         } else {
             GraduationStatus::NotGraduated
-        };
-
-        let currency_raised = CurrencyAmount::new(currency_raised_raw);
-
-        Ok(AuctionState {
-            current_block,
-            phase,
-            checkpoint,
-            graduation,
-            tokens_received,
-            currency_raised,
         })
+    }
+
+    pub async fn fetch_token_balance(&self) -> Result<TokenDepositStatus, Error> {
+        let token = IERC20Minimal::new(self.config.token.as_address(), &self.provider);
+        let balance = token
+            .balanceOf(self.auction)
+            .call()
+            .await
+            .map_err(StateError::from)?;
+
+        if U256::from(balance) >= self.config.total_supply.as_u256() {
+            Ok(TokenDepositStatus::Received)
+        } else {
+            Ok(TokenDepositStatus::NotReceived)
+        }
     }
 
     pub async fn fetch_bids(&self, bid_ids: &[BidId]) -> Result<Vec<Bid>, Error> {
