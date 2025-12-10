@@ -8,10 +8,8 @@ use crate::{
         BlockResult, CompletionReason, EvaluationContext, Intent, OrchestratorCache,
         OrchestratorResult, Strategy,
     },
-    types::{
-        primitives::{BidId, BlockNumber, TokenAmount},
-        state::AuctionState,
-    },
+    types::primitives::{BidId, BlockNumber, TokenAmount},
+    types::state::AuctionState,
 };
 
 pub struct Orchestrator<P, S>
@@ -22,7 +20,6 @@ where
     client: AuctionClient<P>,
     strategy: S,
     cache: OrchestratorCache,
-    cached_state: Option<AuctionState>,
     bids_submitted: u32,
     bids_exited: u32,
     tokens_claimed: TokenAmount,
@@ -38,7 +35,6 @@ where
             client,
             strategy,
             cache: OrchestratorCache::new(),
-            cached_state: None,
             bids_submitted: 0,
             bids_exited: 0,
             tokens_claimed: TokenAmount::ZERO,
@@ -61,7 +57,8 @@ where
     }
 
     pub async fn handle_block(&mut self, block: BlockNumber) -> Result<BlockResult, Error> {
-        let state = self.refresh_state().await?;
+        let phase =
+            AuctionState::compute_phase(self.client.config(), block, self.cache.tokens_received);
 
         let tracked_ids: Vec<BidId> = self
             .client
@@ -71,7 +68,7 @@ where
 
         let ctx = EvaluationContext {
             block,
-            phase: state.phase.clone(),
+            phase,
             cache: &self.cache,
             tracked_bids: tracked_ids,
             config: self.client.config(),
@@ -80,12 +77,6 @@ where
         let _intents: Vec<Intent> = self.strategy.evaluate(&ctx);
 
         Ok(BlockResult::Continue)
-    }
-
-    pub async fn refresh_state(&mut self) -> Result<AuctionState, Error> {
-        let state = self.client.fetch_state().await?;
-        self.cached_state = Some(state.clone());
-        Ok(state)
     }
 
     fn finalize(&self, reason: CompletionReason) -> OrchestratorResult {
