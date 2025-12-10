@@ -1,6 +1,6 @@
 use alloy::primitives::{Address, U256, aliases::U24};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct TickSpacing(U256);
 
 impl TickSpacing {
@@ -19,7 +19,7 @@ impl TickSpacing {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Price(U256);
 
 impl Price {
@@ -63,7 +63,7 @@ impl Price {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct CurrencyAmount(U256);
 
 impl CurrencyAmount {
@@ -84,7 +84,7 @@ impl CurrencyAmount {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct TokenAmount(U256);
 
 impl TokenAmount {
@@ -103,7 +103,7 @@ impl TokenAmount {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct BidId(U256);
 
 impl BidId {
@@ -131,6 +131,7 @@ impl BlockNumber {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Mps(U24);
 
 impl Mps {
@@ -154,6 +155,7 @@ impl Mps {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct CurrencyAddr(Address);
 
 impl CurrencyAddr {
@@ -170,6 +172,7 @@ impl CurrencyAddr {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct TokenAddr(Address);
 
 impl TokenAddr {
@@ -182,6 +185,7 @@ impl TokenAddr {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct HookAddr(Address);
 
 impl HookAddr {

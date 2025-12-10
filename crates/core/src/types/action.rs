@@ -2,6 +2,7 @@ use alloy::primitives::{Address, B256, Bytes};
 
 use super::primitives::{BidId, BlockNumber, CurrencyAmount, Price, TokenAmount};
 
+#[derive(Clone, Debug)]
 pub struct SubmitBidInput {
     pub max_price: Price,
     pub amount: CurrencyAmount,
