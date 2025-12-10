@@ -1,3 +1,4 @@
+use alloy::providers::Provider;
 use futures::StreamExt;
 
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
 
 pub struct Orchestrator<P, S>
 where
-    P: alloy::providers::Provider + Clone + Send + Sync + 'static,
+    P: Provider + Clone + Send + Sync + 'static,
     S: Strategy,
 {
     client: AuctionClient<P>,
@@ -32,7 +33,7 @@ where
 
 impl<P, S> Orchestrator<P, S>
 where
-    P: alloy::providers::Provider + Clone + Send + Sync + 'static,
+    P: Provider + Clone + Send + Sync + 'static,
     S: Strategy,
 {
     pub fn new(client: AuctionClient<P>, strategy: S) -> Self {
