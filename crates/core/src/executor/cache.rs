@@ -4,13 +4,13 @@ use crate::types::{
 };
 
 #[derive(Debug, Default)]
-pub struct OrchestratorCache {
+pub struct ExecutorCache {
     pub tokens_received: TokenDepositStatus,
     pub graduated: GraduationStatus,
     pub final_checkpoint: Option<Checkpoint>,
 }
 
-impl OrchestratorCache {
+impl ExecutorCache {
     pub fn new() -> Self {
         Self {
             tokens_received: TokenDepositStatus::Unknown,
