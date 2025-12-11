@@ -38,11 +38,13 @@ pub struct ClaimParams {
     pub bid_ids: Vec<BidId>,
 }
 
+#[derive(Debug)]
 pub struct SubmitBidResult {
     pub bid_id: BidId,
     pub tx_hash: B256,
 }
 
+#[derive(Debug)]
 pub struct ExitResult {
     pub bid_id: BidId,
     pub tokens_filled: TokenAmount,
@@ -50,6 +52,7 @@ pub struct ExitResult {
     pub tx_hash: B256,
 }
 
+#[derive(Debug)]
 pub struct ClaimResult {
     pub bid_ids: Vec<BidId>,
     pub total_tokens: TokenAmount,

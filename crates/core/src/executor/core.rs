@@ -1,115 +1,77 @@
 use alloy::providers::Provider;
-use futures::StreamExt;
 
 use crate::{
-    blocks::BlockStream,
     client::AuctionClient,
     error::{Error, StateError},
-    orchestrator::{
-        BlockResult, CompletionReason, EvaluationContext, Intent, OrchestratorCache,
-        OrchestratorResult, Strategy, result::IntentResult,
-    },
     types::{
         action::{ClaimParams, ExitBidParams, SubmitBidInput},
         bid::BidStatus,
-        primitives::{BidId, BlockNumber, CurrencyAmount, Price, TokenAmount},
-        state::{AuctionPhase, AuctionState, GraduationStatus},
+        primitives::{BidId, BlockNumber, CurrencyAmount, Price},
+        state::AuctionState,
     },
     validation,
 };
 
-pub struct Orchestrator<P, S>
+use super::{EvaluationContext, ExecutorCache, Intent, IntentOutcome, IntentResult};
+
+pub struct IntentExecutor<P>
 where
-    P: Provider + Clone + Send + Sync + 'static,
-    S: Strategy,
+    P: Provider + Clone,
 {
     client: AuctionClient<P>,
-    strategy: S,
-    cache: OrchestratorCache,
-    bids_submitted: u32,
-    bids_exited: u32,
-    tokens_claimed: TokenAmount,
+    cache: ExecutorCache,
 }
 
-impl<P, S> Orchestrator<P, S>
+impl<P> IntentExecutor<P>
 where
-    P: Provider + Clone + Send + Sync + 'static,
-    S: Strategy,
+    P: Provider + Clone,
 {
-    pub fn new(client: AuctionClient<P>, strategy: S) -> Self {
+    pub fn new(client: AuctionClient<P>) -> Self {
         Self {
             client,
-            strategy,
-            cache: OrchestratorCache::new(),
-            bids_submitted: 0,
-            bids_exited: 0,
-            tokens_claimed: TokenAmount::ZERO,
+            cache: ExecutorCache::new(),
         }
     }
 
-    pub async fn run<B>(&mut self, mut blocks: B) -> Result<OrchestratorResult, Error>
-    where
-        B: BlockStream,
-    {
-        while let Some(block) = blocks.next().await {
-            let block = block?;
-            match self.handle_block(block).await? {
-                BlockResult::Continue => continue,
-                BlockResult::Finished(result) => return Ok(result),
-            }
+    pub async fn execute(&mut self, intent: Intent, block: BlockNumber) -> IntentOutcome {
+        match self.execute_inner(intent.clone(), block).await {
+            Ok(result) => IntentOutcome::Success(result),
+            Err(error) => IntentOutcome::Failed { intent, error },
         }
-
-        Ok(self.finalize(CompletionReason::BlockStreamEnded))
     }
 
-    pub async fn handle_block(&mut self, block: BlockNumber) -> Result<BlockResult, Error> {
+    pub fn context(&self, block: BlockNumber) -> EvaluationContext<'_> {
         let phase =
             AuctionState::compute_phase(self.client.config(), block, self.cache.tokens_received);
 
-        if self.is_complete(&phase) {
-            return Ok(BlockResult::Finished(
-                self.finalize(CompletionReason::AllBidsProcessed),
-            ));
-        }
-
-        let tracked_ids: Vec<BidId> = self
+        let tracked_bids: Vec<BidId> = self
             .client
             .tracked_bids()
             .map(|tracked| tracked.id)
             .collect();
 
-        let ctx = EvaluationContext {
+        EvaluationContext {
             block,
             phase,
             cache: &self.cache,
-            tracked_bids: tracked_ids,
+            tracked_bids,
             config: self.client.config(),
-        };
-
-        let intents: Vec<Intent> = self.strategy.evaluate(&ctx);
-
-        if intents.is_empty() || intents.iter().all(|i| matches!(i, Intent::Skip)) {
-            return Ok(BlockResult::Continue);
-        }
-
-        for intent in intents {
-            let result = self.resolve_and_execute(intent, block).await?;
-            self.record_result(&result);
-        }
-
-        Ok(BlockResult::Continue)
-    }
-
-    fn finalize(&self, reason: CompletionReason) -> OrchestratorResult {
-        OrchestratorResult {
-            bids_submitted: self.bids_submitted,
-            bids_exited: self.bids_exited,
-            tokens_claimed: self.tokens_claimed,
-            reason,
         }
     }
 
-    async fn resolve_and_execute(
+    pub fn client(&self) -> &AuctionClient<P> {
+        &self.client
+    }
+
+    pub fn client_mut(&mut self) -> &mut AuctionClient<P> {
+        &mut self.client
+    }
+
+    pub fn cache(&self) -> &ExecutorCache {
+        &self.cache
+    }
+
+    async fn execute_inner(
         &mut self,
         intent: Intent,
         block: BlockNumber,
@@ -119,8 +81,7 @@ where
                 self.execute_submit_bid(max_price, amount, block).await
             }
             Intent::Exit { bid_id } => self.execute_exit(bid_id, block).await,
-            Intent::Claim(bid_ids) => self.execute_claim(bid_ids, block).await,
-            Intent::Skip => Ok(IntentResult::Skipped),
+            Intent::Claim { bid_ids } => self.execute_claim(bid_ids, block).await,
         }
     }
 
@@ -159,11 +120,12 @@ where
             amount,
             owner: self.client.owner(),
         };
-
         validation::validate_submit_bid(&input, &state, self.client.config())?;
 
         let params = self.client.prepare_bid(input, &state).await?;
+
         self.client.hook().validate(&params, &state).await?;
+
         let result = self.client.submit_bid(params).await?;
 
         Ok(IntentResult::BidSubmitted(result))
@@ -264,34 +226,7 @@ where
         Ok(IntentResult::TokensClaimed(result))
     }
 
-    fn record_result(&mut self, result: &IntentResult) {
-        match result {
-            IntentResult::BidSubmitted(_) => {
-                self.bids_submitted += 1;
-            }
-            IntentResult::BidExited(_) => {
-                self.bids_exited += 1;
-            }
-            IntentResult::TokensClaimed(res) => {
-                self.tokens_claimed += res.total_tokens;
-            }
-            IntentResult::Skipped => {}
-        }
-    }
-
     fn is_past_end(&self, block: BlockNumber) -> bool {
         block >= self.client.config().end_block
-    }
-
-    fn is_complete(&self, phase: &AuctionPhase) -> bool {
-        let no_tracked_bids = self.client.tracked_bids().next().is_none();
-
-        match phase {
-            AuctionPhase::Claimable => no_tracked_bids,
-            AuctionPhase::Ended { .. } => {
-                no_tracked_bids && matches!(self.cache.graduated, GraduationStatus::NotGraduated)
-            }
-            _ => false,
-        }
     }
 }
