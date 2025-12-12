@@ -18,14 +18,14 @@ pub type BoxBlockStream = BoxStream<'static, BlockStreamItem>;
 #[derive(Clone)]
 pub struct BlockProducer<P>
 where
-    P: Provider + Clone + Send + Sync + 'static,
+    P: Provider + Clone,
 {
     provider: P,
 }
 
 impl<P> BlockProducer<P>
 where
-    P: Provider + Clone + Send + Sync + 'static,
+    P: Provider + Clone,
 {
     pub fn new(provider: P) -> Self {
         Self { provider }
