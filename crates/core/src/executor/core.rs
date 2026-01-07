@@ -7,7 +7,7 @@ use crate::{
         action::{ClaimParams, ExitBidParams, SubmitBidInput},
         bid::BidStatus,
         primitives::{BidId, BlockNumber, CurrencyAmount, Price},
-        state::AuctionState,
+        state::{AuctionState, TokenDepositStatus},
     },
     validation,
 };
@@ -57,6 +57,12 @@ where
             tracked_bids,
             config: self.client.config(),
         }
+    }
+
+    pub async fn refresh_tokens_received(&mut self) -> Result<TokenDepositStatus, Error> {
+        let tokens_received = self.client.fetch_token_balance().await?;
+        self.cache.update(Some(tokens_received), None, None, false);
+        Ok(tokens_received)
     }
 
     pub fn client(&self) -> &AuctionClient<P> {

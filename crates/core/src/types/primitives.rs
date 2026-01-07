@@ -121,7 +121,7 @@ impl AddAssign for TokenAmount {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BidId(U256);
 
 impl BidId {

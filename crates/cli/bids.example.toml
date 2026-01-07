@@ -1,6 +1,9 @@
-title = "Example bids config"
+[[bids]]
+# Maximum price willing to pay (in wei)
+max_price = "1000000000000000000"
+# Amount to bid (in wei)
+amount = "100000000000000000"
 
-[bid]
-max_bid = 10.5
-amount = 3.0
-owner = "0xabc1230000000000000000000000000000000000"
+[[bids]]
+max_price = "2000000000000000000"
+amount = "50000000000000000"
