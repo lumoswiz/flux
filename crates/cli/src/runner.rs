@@ -14,6 +14,7 @@ use crate::state::{BidState, BidTracker};
 
 const MAX_RETRIES: u32 = 3;
 const INITIAL_BACKOFF_MS: u64 = 1000;
+const TOKEN_POLL_INTERVAL_BLOCKS: u64 = 3;
 
 pub struct Runner<P>
 where
@@ -22,6 +23,7 @@ where
     executor: IntentExecutor<P>,
     tracker: BidTracker,
     provider: P,
+    last_token_check_block: Option<BlockNumber>,
 }
 
 impl<P> Runner<P>
@@ -33,6 +35,7 @@ where
             executor,
             tracker,
             provider,
+            last_token_check_block: None,
         }
     }
 
@@ -100,6 +103,10 @@ where
                     "[block {}] Phase: PreTokens (checking token deposit...)",
                     block.as_u64()
                 );
+
+                if !self.should_check_tokens(block) {
+                    return Ok(());
+                }
 
                 match self.executor.refresh_tokens_received().await {
                     Ok(TokenDepositStatus::Received) => {
@@ -518,6 +525,21 @@ where
                 | flux_core::Error::Transaction(flux_core::TransactionError::Pending(_))
                 | flux_core::Error::Config(flux_core::ConfigError::Transport(_))
         )
+    }
+
+    fn should_check_tokens(&mut self, block: BlockNumber) -> bool {
+        let check = match self.last_token_check_block {
+            None => true,
+            Some(last) => {
+                block.as_u64().saturating_sub(last.as_u64()) >= TOKEN_POLL_INTERVAL_BLOCKS
+            }
+        };
+
+        if check {
+            self.last_token_check_block = Some(block);
+        }
+
+        check
     }
 
     fn log_final_state(&self) {
