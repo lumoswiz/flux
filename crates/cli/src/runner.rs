@@ -101,7 +101,7 @@ where
                     block.as_u64()
                 );
 
-                match self.executor.client().fetch_token_balance().await {
+                match self.executor.refresh_tokens_received().await {
                     Ok(TokenDepositStatus::Received) => {
                         info!(
                             "[block {}] Tokens received! Proceeding to Active phase",
